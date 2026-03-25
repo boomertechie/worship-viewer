@@ -1,0 +1,17 @@
+[
+  {
+    "date": "2026-03-30",
+    "title": "Sunday Worship",
+    "songs": [
+      { "title": "Song Title", "file": "song-title.pdf" },
+      { "title": "Another Song", "file": "another-song.pdf" }
+    ]
+  },
+  {
+    "date": "2026-03-23",
+    "title": "Wednesday Practice",
+    "songs": [
+      { "title": "Opening Hymn", "file": "opening-hymn.pdf" }
+    ]
+  }
+]

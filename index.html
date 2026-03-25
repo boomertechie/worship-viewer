@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Worship Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #ffffff;
+      color: #12394F;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #12394F;
+      padding: 2.5rem 1.5rem 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 400;
+      color: #ffffff;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    header p {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.65);
+      margin-top: 0.25rem;
+      font-weight: 400;
+    }
+
+    .sets {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .set-card {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-left: 4px solid #577045;
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .set-card:active,
+    .set-card:hover {
+      background: #f7f9f6;
+      border-color: #577045;
+    }
+
+    .set-info h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 400;
+      color: #12394F;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .set-info .date {
+      font-size: 0.85rem;
+      color: #577045;
+      margin-top: 0.15rem;
+      font-weight: 500;
+    }
+
+    .set-info .songs {
+      font-size: 0.78rem;
+      color: #888888;
+      margin-top: 0.35rem;
+      line-height: 1.4;
+    }
+
+    .arrow {
+      font-size: 1.5rem;
+      color: #577045;
+      flex-shrink: 0;
+      margin-left: 1rem;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #888888;
+      font-size: 1rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0 1.5rem;
+      font-size: 0.7rem;
+      color: #aaaaaa;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Worship Music</h1>
+    <p>Tap a set to open</p>
+  </header>
+
+  <div class="sets" id="sets"></div>
+  <footer>Worship Viewer</footer>
+
+  <script>
+    (function() {
+      var container = document.getElementById('sets');
+
+      fetch('/sets.json').then(function(resp) {
+        if (!resp.ok) throw new Error('no sets.json');
+        return resp.json();
+      }).then(function(sets) {
+        if (!sets.length) {
+          container.innerHTML = '<div class="empty">No sets uploaded yet.</div>';
+          return;
+        }
+
+        sets.sort(function(a, b) { return b.date.localeCompare(a.date); });
+
+        sets.forEach(function(set, idx) {
+          var a = document.createElement('a');
+          a.className = 'set-card';
+          a.href = '/viewer.html?set=' + idx;
+
+          var d = new Date(set.date + 'T00:00:00');
+          var displayDate = d.toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+          });
+
+          var songNames = set.songs.map(function(s) { return s.title; }).join(', ');
+
+          a.innerHTML =
+            '<div class="set-info">' +
+              '<h2>' + (set.title || 'Worship Set') + '</h2>' +
+              '<div class="date">' + displayDate + '</div>' +
+              '<div class="songs">' + songNames + '</div>' +
+            '</div>' +
+            '<div class="arrow">&rsaquo;</div>';
+
+          container.appendChild(a);
+        });
+      }).catch(function() {
+        container.innerHTML = '<div class="empty">Add sets to sets.json to get started.</div>';
+      });
+    })();
+  </script>
+
+</body>
+</html>

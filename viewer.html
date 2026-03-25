@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Worship Music</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a2e;
+      -webkit-user-select: none;
+      user-select: none;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+
+    /* === PAGE-TURN MODE === */
+    #page-canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    body.mode-page #scroll-container { display: none; }
+    body.mode-scroll #page-canvas { display: none; }
+    body.mode-scroll .tap-zone { display: none; }
+
+    /* === SCROLL MODE === */
+    #scroll-container {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      height: calc(100vh - 60px);
+      height: calc(100dvh - 60px);
+    }
+
+    #scroll-container canvas {
+      display: block;
+      margin: 0 auto 2px;
+    }
+
+    .song-divider {
+      background: #16213e;
+      color: #8888aa;
+      text-align: center;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border-top: 1px solid #2a2a4a;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    /* === TAP ZONES (page mode only) === */
+    .tap-zone {
+      position: fixed;
+      top: 0;
+      bottom: 60px;
+      z-index: 10;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tap-zone.left { left: 0; width: 35%; }
+    .tap-zone.right { right: 0; width: 35%; }
+    .tap-zone.center { left: 35%; width: 30%; }
+    .tap-zone:active { background: rgba(255, 255, 255, 0.03); }
+
+    /* === BOTTOM BAR === */
+    #bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(22, 33, 62, 0.97);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #2a2a4a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.75rem;
+      z-index: 20;
+      transition: opacity 0.3s;
+    }
+
+    #bottom-bar.hidden { opacity: 0; pointer-events: none; }
+
+    #page-info {
+      color: #8888aa;
+      font-size: 0.85rem;
+      font-weight: 500;
+      min-width: 60px;
+      text-align: center;
+    }
+    #page-info .current { color: #ffffff; font-size: 1rem; }
+
+    .bar-btn {
+      background: #2a2a4a;
+      border: 1px solid #3a3a5a;
+      color: #ccccee;
+      font-size: 1.2rem;
+      width: 44px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .bar-btn:active { background: #3a3a5a; }
+    .bar-btn:disabled { opacity: 0.3; }
+    .bar-btn.active { background: #4a6fa5; border-color: #5a7fb5; }
+
+    #back-btn {
+      background: none; border: none;
+      color: #4a6fa5;
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
+    .bar-group { display: flex; gap: 0.4rem; align-items: center; }
+
+    /* === SONG PICKER DRAWER === */
+    #song-drawer-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 50;
+      display: none;
+    }
+    #song-drawer-overlay.open { display: block; }
+
+    #song-drawer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #16213e;
+      border-top: 1px solid #3a3a5a;
+      border-radius: 16px 16px 0 0;
+      z-index: 51;
+      transform: translateY(100%);
+      transition: transform 0.25s ease-out;
+      max-height: 60vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #song-drawer.open { transform: translateY(0); }
+
+    #song-drawer .drawer-handle {
+      width: 36px; height: 4px;
+      background: #3a3a5a;
+      border-radius: 2px;
+      margin: 10px auto 6px;
+    }
+
+    #song-drawer .drawer-title {
+      color: #8888aa;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.5rem 1.25rem;
+    }
+
+    .song-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid #2a2a4a;
+      color: #e0e0e0;
+      font-size: 1rem;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .song-item:active { background: #1a2744; }
+    .song-item .song-num {
+      color: #4a6fa5;
+      font-weight: 700;
+      font-size: 0.85rem;
+      width: 28px;
+      flex-shrink: 0;
+    }
+    .song-item.current { color: #4a6fa5; font-weight: 600; }
+
+    /* === LOADING === */
+    #loading {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 0.5rem;
+      background: #1a1a2e;
+      color: #8888aa;
+      font-size: 1.1rem;
+      z-index: 100;
+    }
+    #loading.done { display: none; }
+    #error-detail {
+      color: #ff6666; font-size: 0.8rem; font-family: monospace;
+      word-break: break-all; padding: 0 2rem; text-align: center;
+    }
+
+    /* Mode toggle icon */
+    #mode-btn svg { width: 20px; height: 20px; fill: currentColor; }
+  </style>
+</head>
+<body class="mode-page">
+
+  <div id="loading">
+    <div id="loading-text">Loading...</div>
+    <div id="error-detail"></div>
+  </div>
+
+  <!-- Page-turn mode canvas -->
+  <canvas id="page-canvas"></canvas>
+
+  <!-- Scroll mode container -->
+  <div id="scroll-container"></div>
+
+  <!-- Tap zones (page mode) -->
+  <div class="tap-zone left" id="tap-prev"></div>
+  <div class="tap-zone center" id="tap-toggle"></div>
+  <div class="tap-zone right" id="tap-next"></div>
+
+  <!-- Bottom bar -->
+  <div id="bottom-bar">
+    <button id="back-btn" onclick="window.location.href='/'">&#8592; Sets</button>
+
+    <div class="bar-group">
+      <button class="bar-btn" id="prev-btn" title="Previous">&#8249;</button>
+      <span id="page-info"></span>
+      <button class="bar-btn" id="next-btn" title="Next">&#8250;</button>
+    </div>
+
+    <div class="bar-group">
+      <button class="bar-btn" id="songs-btn" title="Songs">&#9776;</button>
+      <button class="bar-btn" id="mode-btn" title="Toggle scroll/page">
+        <svg viewBox="0 0 24 24"><path id="mode-icon" d="M3 5h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h18v2H3z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Song picker drawer -->
+  <div id="song-drawer-overlay"></div>
+  <div id="song-drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">Songs</div>
+    <div id="song-list"></div>
+  </div>
+
+  <script src="/pdfjs/build/pdf.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/build/pdf.worker.js';
+
+    // --- Performance & Diagnostics Logger ---
+    var WVLog = (function() {
+      var MAX_ENTRIES = 500;
+      var entries = [];
+      var timers = {};
+      var sessionStart = performance.now();
+      var renderStats = { pageTurn: [], scrollPage: [], pdfLoad: [] };
+
+      function ts() {
+        return ((performance.now() - sessionStart) / 1000).toFixed(3);
+      }
+
+      function log(level, category, msg, data) {
+        var entry = {
+          t: ts(),
+          ts: new Date().toISOString(),
+          level: level,
+          cat: category,
+          msg: msg
+        };
+        if (data !== undefined) entry.data = data;
+        entries.push(entry);
+        if (entries.length > MAX_ENTRIES) entries.shift();
+
+        var prefix = '[WV ' + ts() + 's] [' + level + '] [' + category + '] ';
+        if (level === 'ERROR') {
+          console.error(prefix + msg, data || '');
+        } else if (level === 'WARN') {
+          console.warn(prefix + msg, data || '');
+        } else {
+          console.log(prefix + msg, data || '');
+        }
+      }
+
+      function startTimer(name) {
+        timers[name] = performance.now();
+      }
+
+      function endTimer(name, category) {
+        if (!timers[name]) return 0;
+        var elapsed = performance.now() - timers[name];
+        delete timers[name];
+        var ms = Math.round(elapsed * 100) / 100;
+        if (category && renderStats[category]) {
+          renderStats[category].push(ms);
+          // Keep last 100 measurements per category
+          if (renderStats[category].length > 100) renderStats[category].shift();
+        }
+        return ms;
+      }
+
+      function getStats(category) {
+        var arr = renderStats[category];
+        if (!arr || arr.length === 0) return null;
+        var sorted = arr.slice().sort(function(a, b) { return a - b; });
+        return {
+          count: arr.length,
+          avg: Math.round(arr.reduce(function(a, b) { return a + b; }, 0) / arr.length),
+          min: sorted[0],
+          max: sorted[sorted.length - 1],
+          p50: sorted[Math.floor(sorted.length * 0.5)],
+          p95: sorted[Math.floor(sorted.length * 0.95)]
+        };
+      }
+
+      return {
+        info: function(cat, msg, data) { log('INFO', cat, msg, data); },
+        warn: function(cat, msg, data) { log('WARN', cat, msg, data); },
+        error: function(cat, msg, data) { log('ERROR', cat, msg, data); },
+        start: startTimer,
+        end: endTimer,
+        stats: getStats,
+        dump: function() {
+          console.group('=== Worship Viewer Diagnostics ===');
+          console.log('Session uptime: ' + ts() + 's');
+          console.log('Total log entries: ' + entries.length);
+          console.log('Current state:', {
+            mode: mode, currentPage: currentPage, totalPages: totalPages,
+            rendering: rendering, barVisible: barVisible,
+            songsLoaded: songs.length, pagesLoaded: allPages.length
+          });
+          ['pdfLoad', 'pageTurn', 'scrollPage'].forEach(function(cat) {
+            var s = getStats(cat);
+            if (s) console.log(cat + ' render stats (ms):', s);
+          });
+          console.log('Recent entries:', entries.slice(-30));
+          console.groupEnd();
+          return { entries: entries.slice(), stats: renderStats, state: {
+            mode: mode, currentPage: currentPage, totalPages: totalPages, rendering: rendering
+          }};
+        },
+        errors: function() {
+          return entries.filter(function(e) { return e.level === 'ERROR' || e.level === 'WARN'; });
+        }
+      };
+    })();
+
+    WVLog.info('init', 'Worship Viewer starting', {
+      userAgent: navigator.userAgent,
+      screen: window.innerWidth + 'x' + window.innerHeight,
+      dpr: window.devicePixelRatio || 1,
+      url: window.location.href
+    });
+
+    // --- State ---
+    var allPages = [];       // { pdf, pageNum, songIdx, songTitle, globalIdx }
+    var songs = [];          // { title, file, startPage, pageCount }
+    var currentPage = 0;
+    var totalPages = 0;
+    var rendering = false;
+    var mode = 'page';       // 'page' or 'scroll'
+    var barVisible = true;
+    var scrollRenderState = { pending: 0, completed: 0, failed: 0 };
+
+    // --- DOM ---
+    var pageCanvas = document.getElementById('page-canvas');
+    var pageCtx = pageCanvas.getContext('2d');
+    var scrollContainer = document.getElementById('scroll-container');
+    var pageInfo = document.getElementById('page-info');
+    var prevBtn = document.getElementById('prev-btn');
+    var nextBtn = document.getElementById('next-btn');
+    var loading = document.getElementById('loading');
+    var loadingText = document.getElementById('loading-text');
+    var errorDetail = document.getElementById('error-detail');
+    var bottomBar = document.getElementById('bottom-bar');
+    var songsBtn = document.getElementById('songs-btn');
+    var modeBtn = document.getElementById('mode-btn');
+    var modeIcon = document.getElementById('mode-icon');
+    var songDrawer = document.getElementById('song-drawer');
+    var songDrawerOverlay = document.getElementById('song-drawer-overlay');
+    var songList = document.getElementById('song-list');
+
+    // --- Page-turn rendering ---
+    function renderPageTurn(idx) {
+      if (idx < 0 || idx >= totalPages) return;
+      if (rendering) {
+        WVLog.warn('render', 'Page-turn blocked by rendering lock, idx=' + idx + ' (current=' + currentPage + ')');
+        return;
+      }
+      rendering = true;
+      var timerKey = 'pageTurn-' + idx;
+      WVLog.start(timerKey);
+
+      var entry = allPages[idx];
+      WVLog.info('render', 'Page-turn rendering page ' + (idx + 1) + '/' + totalPages +
+        ' (song: ' + entry.songTitle + ', pdf page ' + entry.pageNum + ')');
+
+      entry.pdf.getPage(entry.pageNum).then(function(page) {
+        var dpr = window.devicePixelRatio || 1;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight - (barVisible ? 60 : 0);
+
+        var uv = page.getViewport({ scale: 1 });
+        var scale = Math.min(vw / uv.width, vh / uv.height);
+        var viewport = page.getViewport({ scale: scale * dpr });
+
+        pageCanvas.width = viewport.width;
+        pageCanvas.height = viewport.height;
+        pageCanvas.style.width = (viewport.width / dpr) + 'px';
+        pageCanvas.style.height = (viewport.height / dpr) + 'px';
+
+        var rh = viewport.height / dpr;
+        var ah = window.innerHeight - (barVisible ? 60 : 0);
+        pageCanvas.style.marginTop = Math.max(0, (ah - rh) / 2) + 'px';
+
+        page.render({ canvasContext: pageCtx, viewport: viewport }).promise.then(function() {
+          var ms = WVLog.end(timerKey, 'pageTurn');
+          currentPage = idx;
+          updatePageInfo();
+          rendering = false;
+          WVLog.info('render', 'Page-turn complete: page ' + (idx + 1) + ' in ' + ms + 'ms');
+        });
+      }).catch(function(err) {
+        WVLog.end(timerKey);
+        WVLog.error('render', 'Page-turn FAILED for page ' + (idx + 1), err.message);
+        errorDetail.textContent = err.message;
+        rendering = false;
+      });
+    }
+
+    // --- Scroll mode rendering ---
+    function renderScrollPage(entry, canvas, pageIndex, dpr, vw) {
+      var timerKey = 'scrollPage-' + pageIndex;
+      WVLog.start(timerKey);
+      scrollRenderState.pending++;
+
+      return entry.pdf.getPage(entry.pageNum).then(function(page) {
+        var uv = page.getViewport({ scale: 1 });
+        var scale = vw / uv.width;
+        var viewport = page.getViewport({ scale: scale * dpr });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = (viewport.width / dpr) + 'px';
+        canvas.style.height = (viewport.height / dpr) + 'px';
+
+        return page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise.then(function() {
+          var ms = WVLog.end(timerKey, 'scrollPage');
+          scrollRenderState.pending--;
+          scrollRenderState.completed++;
+          WVLog.info('scroll', 'Scroll page ' + (pageIndex + 1) + ' rendered in ' + ms + 'ms');
+        });
+      }).catch(function(err) {
+        WVLog.end(timerKey);
+        scrollRenderState.pending--;
+        scrollRenderState.failed++;
+        WVLog.error('scroll', 'Scroll page ' + (pageIndex + 1) + ' FAILED: ' + err.message +
+          ' (song: ' + entry.songTitle + ', pdf page ' + entry.pageNum + ')');
+
+        // Visual error indicator on the failed canvas
+        canvas.width = vw * dpr;
+        canvas.height = 200 * dpr;
+        canvas.style.width = vw + 'px';
+        canvas.style.height = '200px';
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = '#2a1a1a';
+        ctx.fillRect(0, 0, vw, 200);
+        ctx.fillStyle = '#ff6666';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Failed to render: ' + entry.songTitle + ' p' + entry.pageNum, vw / 2, 90);
+        ctx.fillStyle = '#ff9999';
+        ctx.font = '12px monospace';
+        ctx.fillText('Tap mode toggle to retry', vw / 2, 115);
+      });
+    }
+
+    function renderScrollMode() {
+      WVLog.info('scroll', 'Starting scroll mode render for ' + allPages.length + ' pages');
+      WVLog.start('scrollTotal');
+      scrollRenderState = { pending: 0, completed: 0, failed: 0 };
+      scrollContainer.innerHTML = '';
+      var dpr = window.devicePixelRatio || 1;
+      var vw = window.innerWidth;
+      var lastSongIdx = -1;
+      var renderPromises = [];
+
+      allPages.forEach(function(entry, i) {
+        // Song divider
+        if (entry.songIdx !== lastSongIdx && songs.length > 1) {
+          var divider = document.createElement('div');
+          divider.className = 'song-divider';
+          divider.id = 'song-' + entry.songIdx;
+          divider.textContent = entry.songTitle;
+          scrollContainer.appendChild(divider);
+          lastSongIdx = entry.songIdx;
+        }
+
+        var c = document.createElement('canvas');
+        c.setAttribute('data-page', i);
+        scrollContainer.appendChild(c);
+
+        renderPromises.push(renderScrollPage(entry, c, i, dpr, vw));
+      });
+
+      Promise.all(renderPromises).then(function() {
+        var ms = WVLog.end('scrollTotal');
+        WVLog.info('scroll', 'All scroll pages done in ' + ms + 'ms — ' +
+          scrollRenderState.completed + ' ok, ' + scrollRenderState.failed + ' failed');
+        if (scrollRenderState.failed > 0) {
+          WVLog.warn('scroll', scrollRenderState.failed + ' pages failed to render');
+        }
+      });
+    }
+
+    // --- Navigation ---
+    function prevPage() {
+      if (mode === 'page' && currentPage > 0) renderPageTurn(currentPage - 1);
+    }
+
+    function nextPage() {
+      if (mode === 'page' && currentPage < totalPages - 1) renderPageTurn(currentPage + 1);
+    }
+
+    function jumpToSong(songIdx) {
+      closeSongDrawer();
+      var song = songs[songIdx];
+      if (!song) return;
+      WVLog.info('nav', 'Jump to song ' + (songIdx + 1) + ': ' + song.title + ' (mode: ' + mode + ')');
+
+      if (mode === 'page') {
+        renderPageTurn(song.startPage);
+      } else {
+        var target = document.getElementById('song-' + songIdx);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function updatePageInfo() {
+      if (mode === 'page') {
+        pageInfo.innerHTML = '<span class="current">' + (currentPage + 1) + '</span> / ' + totalPages;
+        prevBtn.disabled = currentPage <= 0;
+        nextBtn.disabled = currentPage >= totalPages - 1;
+        prevBtn.style.display = '';
+        nextBtn.style.display = '';
+      } else {
+        // In scroll mode, show current song name
+        pageInfo.innerHTML = songs.length + ' song' + (songs.length !== 1 ? 's' : '');
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      }
+    }
+
+    // --- Mode toggle ---
+    function toggleMode() {
+      var from = mode;
+      if (rendering) {
+        WVLog.warn('mode', 'Mode toggle while rendering — forcing lock release');
+        rendering = false;
+      }
+      if (mode === 'page') {
+        mode = 'scroll';
+        document.body.className = 'mode-scroll';
+        modeIcon.setAttribute('d', 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z');
+        renderScrollMode();
+      } else {
+        mode = 'page';
+        document.body.className = 'mode-page';
+        modeIcon.setAttribute('d', 'M3 5h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h18v2H3z');
+        renderPageTurn(currentPage);
+      }
+      WVLog.info('mode', 'Switched ' + from + ' → ' + mode);
+      updatePageInfo();
+    }
+
+    // --- Song drawer ---
+    function openSongDrawer() {
+      songDrawerOverlay.classList.add('open');
+      songDrawer.classList.add('open');
+    }
+
+    function closeSongDrawer() {
+      songDrawerOverlay.classList.remove('open');
+      songDrawer.classList.remove('open');
+    }
+
+    function buildSongDrawer() {
+      songList.innerHTML = '';
+      songs.forEach(function(song, i) {
+        var item = document.createElement('div');
+        item.className = 'song-item';
+        item.innerHTML = '<span class="song-num">' + (i + 1) + '</span>' + song.title;
+        item.addEventListener('click', function() { jumpToSong(i); });
+        songList.appendChild(item);
+      });
+    }
+
+    // --- Bar toggle ---
+    function toggleBar() {
+      barVisible = !barVisible;
+      bottomBar.classList.toggle('hidden', !barVisible);
+      if (mode === 'page') renderPageTurn(currentPage);
+    }
+
+    // --- Event listeners ---
+    prevBtn.addEventListener('click', prevPage);
+    nextBtn.addEventListener('click', nextPage);
+    songsBtn.addEventListener('click', openSongDrawer);
+    modeBtn.addEventListener('click', toggleMode);
+    songDrawerOverlay.addEventListener('click', closeSongDrawer);
+
+    document.getElementById('tap-prev').addEventListener('click', prevPage);
+    document.getElementById('tap-next').addEventListener('click', nextPage);
+    document.getElementById('tap-toggle').addEventListener('click', toggleBar);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') nextPage();
+    });
+
+    var touchStartX = 0, touchStartY = 0;
+    document.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+      if (mode !== 'page') return;
+      var dx = e.changedTouches[0].clientX - touchStartX;
+      var dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx < 0) nextPage(); else prevPage();
+      }
+    }, { passive: true });
+
+    window.addEventListener('resize', function() {
+      WVLog.info('layout', 'Resize: ' + window.innerWidth + 'x' + window.innerHeight);
+      if (rendering) {
+        WVLog.warn('layout', 'Resize while rendering — forcing lock release');
+        rendering = false;
+      }
+      if (mode === 'page') renderPageTurn(currentPage);
+      else renderScrollMode();
+    });
+
+    // --- Load PDFs ---
+    (function init() {
+      var params = new URLSearchParams(window.location.search);
+      var setIdx = parseInt(params.get('set'), 10) || 0;
+
+      // Support legacy single-file URL too
+      var legacyFile = params.get('file');
+
+      if (legacyFile) {
+        songs = [{ title: 'Song', file: legacyFile.replace('/pdfs/', ''), startPage: 0, pageCount: 0 }];
+        loadPDFs([legacyFile]);
+        return;
+      }
+
+      loadingText.textContent = 'Loading set...';
+
+      fetch('/sets.json').then(function(r) { return r.json(); }).then(function(sets) {
+        var set = sets[setIdx];
+        if (!set) throw new Error('Set not found');
+
+        var files = set.songs.map(function(s) { return '/pdfs/' + s.file; });
+        songs = set.songs.map(function(s) {
+          return { title: s.title, file: s.file, startPage: 0, pageCount: 0 };
+        });
+
+        return loadPDFs(files);
+      }).catch(function(err) {
+        loadingText.textContent = 'Error loading set';
+        errorDetail.textContent = err.message;
+      });
+    })();
+
+    function loadPDFs(files) {
+      WVLog.info('load', 'Loading ' + files.length + ' PDFs', files);
+      WVLog.start('loadAll');
+      loadingText.textContent = 'Loading ' + files.length + ' song' + (files.length > 1 ? 's' : '') + '...';
+
+      var promises = files.map(function(f, i) {
+        WVLog.start('pdf-' + i);
+        return pdfjsLib.getDocument(f).promise.then(function(pdf) {
+          var ms = WVLog.end('pdf-' + i, 'pdfLoad');
+          WVLog.info('load', 'PDF loaded: ' + f + ' (' + pdf.numPages + ' pages) in ' + ms + 'ms');
+          return pdf;
+        });
+      });
+
+      return Promise.all(promises).then(function(pdfs) {
+        var globalIdx = 0;
+
+        pdfs.forEach(function(pdf, songIdx) {
+          songs[songIdx].startPage = globalIdx;
+          songs[songIdx].pageCount = pdf.numPages;
+
+          for (var p = 1; p <= pdf.numPages; p++) {
+            allPages.push({
+              pdf: pdf,
+              pageNum: p,
+              songIdx: songIdx,
+              songTitle: songs[songIdx].title,
+              globalIdx: globalIdx
+            });
+            globalIdx++;
+          }
+        });
+
+        totalPages = allPages.length;
+        var totalMs = WVLog.end('loadAll');
+        WVLog.info('load', 'All PDFs ready: ' + totalPages + ' pages across ' +
+          songs.length + ' songs in ' + totalMs + 'ms');
+
+        buildSongDrawer();
+        loading.classList.add('done');
+        renderPageTurn(0);
+        updatePageInfo();
+      }).catch(function(err) {
+        WVLog.end('loadAll');
+        WVLog.error('load', 'PDF loading FAILED', err.message);
+        loadingText.textContent = 'Error loading PDFs';
+        errorDetail.textContent = err.message;
+      });
+    }
+  </script>
+
+</body>
+</html>

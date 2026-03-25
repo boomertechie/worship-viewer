@@ -1,0 +1,12 @@
+services:
+  worship-viewer:
+    build: .
+    container_name: worship-viewer
+    ports:
+      - "8580:80"
+    volumes:
+      # Mount PDFs directory so admin can drop files without rebuilding
+      - ./pdfs:/usr/share/nginx/html/pdfs:ro
+      # Mount sets.json so it can be updated without rebuilding
+      - ./sets.json:/usr/share/nginx/html/sets.json:ro
+    restart: unless-stopped

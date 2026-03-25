@@ -1,0 +1,8 @@
+# PDF chord charts (copyrighted music — users supply their own)
+pdfs/*.pdf
+
+# PDF.js library (users download their own copy)
+pdfjs/
+
+# Actual set configuration (contains church-specific data)
+sets.json
