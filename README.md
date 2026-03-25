@@ -1,6 +1,6 @@
 # Worship Viewer
 
-A simple, self-hosted web app for displaying chord charts and sheet music on tablets during worship services. Designed for small churches that want a free, no-account-needed solution for getting PDFs onto iPads and tablets.
+A simple, self-hosted web app for displaying chord charts and sheet music on tablets during worship services. Designed for small churches that want a free, no-account-needed solution for getting chord sheets and sheet music onto iPads and tablets.
 
 ## Features
 
