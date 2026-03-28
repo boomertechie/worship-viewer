@@ -14,44 +14,20 @@ A simple, self-hosted web app for displaying chord charts and sheet music on tab
 
 ## Quick Start
 
-### 1. Get PDF.js 2.16 (legacy build)
-
-This project uses PDF.js 2.16 for maximum iPad/Safari compatibility. Newer versions use ES2022+ features that break on older tablets.
+### Automated Setup
 
 ```bash
-# Download the legacy build
-curl -L -o pdfjs.zip https://github.com/nicktehrani/pdfjs-2.16.105/archive/refs/heads/main.zip
-unzip pdfjs.zip
-mv pdfjs-2.16.105-main pdfjs
+git clone https://github.com/boomertechie/worship-viewer.git
+cd worship-viewer
+bash setup.sh
 ```
 
-Or download manually from the [PDF.js 2.16.105 release](https://github.com/nicktehrani/pdfjs-2.16.105).
+This downloads PDF.js 2.16, creates the `pdfs/` directory, and sets up `sets.json` from the example template. Requires `curl` and `unzip`.
 
-You need this structure:
-```
-pdfjs/
-├── build/
-│   ├── pdf.js
-│   └── pdf.worker.js
-└── web/
-    ├── cmaps/
-    └── ...
-```
+### Add your content
 
-### 2. Add your PDFs
-
-```bash
-mkdir -p pdfs
-cp /path/to/your/chord-charts/*.pdf pdfs/
-```
-
-### 3. Configure your sets
-
-```bash
-cp sets.example.json sets.json
-```
-
-Edit `sets.json` to list your worship sets:
+1. Drop your chord chart PDFs into `pdfs/`
+2. Edit `sets.json` to list your worship sets:
 
 ```json
 [
@@ -66,10 +42,16 @@ Edit `sets.json` to list your worship sets:
 ]
 ```
 
-### 4. Run with Docker
+### Run
 
+**With Docker:**
 ```bash
 docker compose up -d
+```
+
+**Without Docker (Python 3):**
+```bash
+python3 -m http.server 8580
 ```
 
 Open `http://your-server:8580` on your tablets.
